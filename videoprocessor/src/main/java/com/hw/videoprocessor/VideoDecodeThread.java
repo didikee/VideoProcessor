@@ -3,11 +3,13 @@ package com.hw.videoprocessor;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
-import android.support.annotation.Nullable;
 import android.view.Surface;
 import com.hw.videoprocessor.util.CL;
+import com.hw.videoprocessor.util.FrameDropper;
 import com.hw.videoprocessor.util.InputSurface;
 import com.hw.videoprocessor.util.OutputSurface;
+
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -37,6 +39,8 @@ public class VideoDecodeThread extends Thread {
     private Integer mDstFrameRate;
     private Integer mSrcFrameRate;
     private boolean mDropFrames;
+    private FrameDropper mFrameDropper;
+
     public VideoDecodeThread(IVideoEncodeThread videoEncodeThread, MediaExtractor extractor,
                              @Nullable Integer startTimeMs, @Nullable Integer endTimeMs,
                              @Nullable Integer srcFrameRate, @Nullable Integer dstFrameRate, @Nullable Float speed,
@@ -109,19 +113,14 @@ public class VideoDecodeThread extends Thread {
         mDecoder.configure(inputFormat, mOutputSurface.getSurface(), null, 0);
         mDecoder.start();
         //丢帧判断
-        int frameIntervalForDrop = 0;
-        int dropCount = 0;
-        int frameIndex = 1;
+        int frameIndex = 0;
         if (mDropFrames && mSrcFrameRate != null && mDstFrameRate != null) {
             if (mSpeed != null) {
                 mSrcFrameRate = (int) (mSrcFrameRate * mSpeed);
             }
             if (mSrcFrameRate > mDstFrameRate) {
-                frameIntervalForDrop = mDstFrameRate / (mSrcFrameRate - mDstFrameRate);
-                frameIntervalForDrop = frameIntervalForDrop == 0 ? 1 : frameIntervalForDrop;
-                dropCount = (mSrcFrameRate - mDstFrameRate) / mDstFrameRate;
-                dropCount = dropCount == 0 ? 1 : dropCount;
-                CL.w("帧率过高，需要丢帧:" + mSrcFrameRate + "->" + mDstFrameRate + " frameIntervalForDrop:" + frameIntervalForDrop + " dropCount:" + dropCount);
+                mFrameDropper = new FrameDropper(mSrcFrameRate,mDstFrameRate);
+                CL.w("帧率过高，需要丢帧:" + mSrcFrameRate + "->" + mDstFrameRate);
             }
         }
         //开始解码
@@ -210,12 +209,9 @@ public class VideoDecodeThread extends Thread {
                         break;
                     }
                     //检查是否需要丢帧
-                    if (frameIntervalForDrop > 0) {
-                        int remainder = frameIndex % (frameIntervalForDrop + dropCount);
-                        if (remainder > frameIntervalForDrop || remainder == 0) {
+                    if (mFrameDropper!=null && mFrameDropper.checkDrop(frameIndex)) {
                             CL.w("帧率过高，丢帧:" + frameIndex);
                             doRender = false;
-                        }
                     }
                     frameIndex++;
                     mDecoder.releaseOutputBuffer(outputBufferIndex, doRender);
@@ -246,6 +242,7 @@ public class VideoDecodeThread extends Thread {
                 }
             }
         }
+        CL.i("Video Decode Done!");
         mDecodeDone.set(true);
     }
 

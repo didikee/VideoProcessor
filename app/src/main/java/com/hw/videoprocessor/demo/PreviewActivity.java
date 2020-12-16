@@ -12,7 +12,11 @@ import android.view.MenuItem;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.VideoView;
+
+import com.hw.videoprocessor.VideoProcessor;
 import com.hw.videoprocessor.VideoUtil;
+
+import java.util.Locale;
 
 /**
  * Created by Bhuvnesh on 08-03-2017.
@@ -22,8 +26,7 @@ public class PreviewActivity extends AppCompatActivity {
     private VideoView videoView;
     private SeekBar seekBar;
     private int stopPosition;
-    private static final String POSITION = "position";
-    private static final String FILEPATH = "filepath";
+    static final String KEY_URI = "uri";
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -35,30 +38,31 @@ public class PreviewActivity extends AppCompatActivity {
         seekBar = (SeekBar) findViewById(R.id.seekBar);
 
         TextView tvInstruction = (TextView) findViewById(R.id.tvInstruction);
-        String filePath = getIntent().getStringExtra(FILEPATH);
+        Uri uri = getIntent().getParcelableExtra(KEY_URI);
 
         String videoInfo = "";
         try {
             MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-            retriever.setDataSource(filePath);
+            retriever.setDataSource(this,uri);
             int bitrate = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE));
             retriever.release();
             MediaExtractor extractor = new MediaExtractor();
-            extractor.setDataSource(filePath);
+            extractor.setDataSource(this,uri,null);
             MediaFormat format = extractor.getTrackFormat(VideoUtil.selectTrack(extractor, false));
             int frameRate = format.containsKey(MediaFormat.KEY_FRAME_RATE) ? format.getInteger(MediaFormat.KEY_FRAME_RATE) : -1;
+            float aveFrameRate = VideoUtil.getAveFrameRate(new VideoProcessor.MediaSource(this,uri));
             int width = format.getInteger(MediaFormat.KEY_WIDTH);
             int height = format.getInteger(MediaFormat.KEY_HEIGHT);
             int rotation = format.containsKey(MediaFormat.KEY_ROTATION) ? format.getInteger(MediaFormat.KEY_ROTATION) : -1;
             long duration = format.containsKey(MediaFormat.KEY_DURATION) ? format.getLong(MediaFormat.KEY_DURATION) : -1;
-            videoInfo = String.format("size:%dX%d,framerate:%d,rotation:%d,bitrate:%d,duration:%.1fs", width, height, frameRate, rotation, bitrate,
+            videoInfo = String.format(Locale.ENGLISH,"size:%dX%d,framerate:%d,aveFrameRate:%f,rotation:%d,bitrate:%d,duration:%.1fs", width, height, frameRate,aveFrameRate, rotation, bitrate,
                     duration / 1000f / 1000f);
             extractor.release();
         } catch (Exception e) {
             e.printStackTrace();
         }
-        tvInstruction.setText("Video stored at path " + filePath + "\n" + videoInfo);
-        videoView.setVideoURI(Uri.parse(filePath));
+        tvInstruction.setText(String.format(Locale.ENGLISH,"Video stored at \nUri %s\nPath:%s\n%s",uri,PathUtil.getPath(this,uri),videoInfo));
+        videoView.setVideoURI(uri);
         videoView.start();
 
 

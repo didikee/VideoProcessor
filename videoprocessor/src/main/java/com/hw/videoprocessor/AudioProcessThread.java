@@ -4,11 +4,12 @@ import android.content.Context;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
-import android.support.annotation.Nullable;
 import com.hw.videoprocessor.util.AudioUtil;
 import com.hw.videoprocessor.util.CL;
 import com.hw.videoprocessor.util.VideoProgressAve;
 import com.hw.videoprocessor.util.VideoProgressListener;
+
+import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -20,7 +21,7 @@ import java.util.concurrent.TimeoutException;
 
 public class AudioProcessThread extends Thread implements VideoProgressListener {
 
-    private String mVidepPath;
+    private VideoProcessor.MediaSource mMediaSource;
     private Integer mStartTimeMs;
     private Integer mEndTimeMs;
     private Float mSpeed;
@@ -32,14 +33,14 @@ public class AudioProcessThread extends Thread implements VideoProgressListener 
     private CountDownLatch mMuxerStartLatch;
     private VideoProgressAve mProgressAve;
 
-    public AudioProcessThread(Context context, String videoPath, MediaMuxer muxer,
+    public AudioProcessThread(Context context, VideoProcessor.MediaSource mediaSource, MediaMuxer muxer,
                               @Nullable Integer startTimeMs, @Nullable Integer endTimeMs,
                               @Nullable Float speed, int muxerAudioTrackIndex,
                               CountDownLatch muxerStartLatch
 
     ) {
         super("VideoProcessDecodeThread");
-        mVidepPath = videoPath;
+        mMediaSource = mediaSource;
         mStartTimeMs = startTimeMs;
         mEndTimeMs = endTimeMs;
         mSpeed = speed;
@@ -64,7 +65,7 @@ public class AudioProcessThread extends Thread implements VideoProgressListener 
     }
 
     private void doProcessAudio() throws Exception {
-        mExtractor.setDataSource(mVidepPath);
+        mMediaSource.setDataSource(mExtractor);
         int audioTrackIndex = VideoUtil.selectTrack(mExtractor, true);
         if (audioTrackIndex >= 0) {
             //处理音频
@@ -89,6 +90,7 @@ public class AudioProcessThread extends Thread implements VideoProgressListener 
         if (mProgressAve != null) {
             mProgressAve.setAudioProgress(1);
         }
+        CL.i("Audio Process Done!");
     }
 
     public Exception getException() {

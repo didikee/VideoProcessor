@@ -26,12 +26,19 @@ allprojects {
 ``` groovy
 
 	dependencies {
-	        implementation 'com.github.yellowcath:VideoProcessor:2.3.3'
+	        implementation 'com.github.yellowcath:VideoProcessor:2.4.2'
 	}
 ```
 
+## Changelog
 
+2.4.2
+* 解决arm64的机器上crash的问题
+* 解决某些情况下进度计算错误的问题
 
+2.4.0
+* 兼容Android Q
+* 去掉对support lib的依赖
 
 ## 使用
 基本用法如下
@@ -46,7 +53,7 @@ allprojects {
 VideoProcessor支持多种参数同时处理，完整参数如下
 ``` java
 VideoProcessor.processor(context)
-       .input(inputVideoPath)
+       .input(inputVideoPath) // .input(inputVideoUri)
        .output(outputVideoPath)
        //以下参数全部为可选
        .outWidth(width)
